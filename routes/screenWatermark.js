@@ -97,32 +97,3 @@ router.post('/validate-license', async (req, res) => {
 });
 
 module.exports = router;
-```
-
-## File 4: `.env.example`
-```
-SUPABASE_URL=your_supabase_url_here
-SUPABASE_KEY=your_supabase_anon_key_here
-PORT=3000
-```
-
-## File 5: `.gitignore` (if not already created)
-```
-node_modules/
-.env
-.DS_Store
-```
-
----
-
-## Steps to add these files:
-
-1. **Locally on your computer**, clone the new repo: `git clone https://github.com/aquamark-io/screen-api.git`
-2. **cd into it**: `cd screen-api`
-3. **Create a `routes` folder**: `mkdir routes`
-4. **Create all 5 files above** with the content I provided
-5. **Commit and push**:
-```
-   git add .
-   git commit -m "Initial API setup"
-   git push

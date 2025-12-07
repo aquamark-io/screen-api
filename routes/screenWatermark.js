@@ -40,19 +40,21 @@ router.post('/validate-license', async (req, res) => {
       }
     }
 
-    // 3. Check if device already exists
+    // 3. Check if device already exists for THIS license
     const { data: existingDevice } = await supabase
       .from('screen_active_devices')
       .select('*')
       .eq('device_id', device_id)
+      .eq('license_key', license_key)
       .single();
 
     if (existingDevice) {
-      // Device already activated - just update last_checkin
+      // Device already activated for this license - just update last_checkin
       await supabase
         .from('screen_active_devices')
         .update({ last_checkin: new Date().toISOString() })
-        .eq('device_id', device_id);
+        .eq('device_id', device_id)
+        .eq('license_key', license_key);
 
       return res.json({ 
         valid: true, 

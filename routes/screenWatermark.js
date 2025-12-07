@@ -11,8 +11,6 @@ const supabase = createClient(
 router.post('/validate-license', async (req, res) => {
   const { license_key, device_id, watermark_text } = req.body;
 
-  console.log('Validation request:', { license_key, device_id, watermark_text });
-
   if (!license_key || !device_id) {
     return res.status(400).json({ valid: false, message: 'Missing license_key or device_id' });
   }
@@ -26,12 +24,10 @@ router.post('/validate-license', async (req, res) => {
       .single();
 
     if (licenseError || !license) {
-      console.log('License not found:', licenseError);
       return res.json({ valid: false, message: 'Invalid license key' });
     }
 
     if (license.status !== 'active') {
-      console.log('License not active');
       return res.json({ valid: false, message: 'License has been cancelled' });
     }
 
@@ -40,21 +36,19 @@ router.post('/validate-license', async (req, res) => {
       const now = new Date();
       const expiresAt = new Date(license.trial_expires_at);
       if (now > expiresAt) {
-        console.log('Trial expired');
         return res.json({ valid: false, message: 'Trial has expired' });
       }
     }
 
     // 3. Check if device already exists
-    const { data: existingDevice, error: deviceError } = await supabase
+    const { data: existingDevice } = await supabase
       .from('screen_active_devices')
       .select('*')
       .eq('device_id', device_id)
-      .maybeSingle(); // Changed from .single() to .maybeSingle()
+      .single();
 
     if (existingDevice) {
       // Device already activated - just update last_checkin
-      console.log('Existing device, updating checkin');
       await supabase
         .from('screen_active_devices')
         .update({ last_checkin: new Date().toISOString() })
@@ -63,7 +57,7 @@ router.post('/validate-license', async (req, res) => {
       return res.json({ 
         valid: true, 
         message: 'Device authorized',
-        watermark_text: existingDevice.watermark_text 
+        watermark_text: license.watermark_text 
       });
     }
 
@@ -73,36 +67,22 @@ router.post('/validate-license', async (req, res) => {
       .select('*')
       .eq('license_key', license_key);
 
-    console.log('Active devices:', activeDevices?.length, 'Seat count:', license.seat_count);
-
-    if (activeDevices && activeDevices.length >= license.seat_count) {
-      console.log('No seats available');
+    if (activeDevices.length >= license.seat_count) {
       return res.json({ valid: false, message: 'No available seats. Please contact support to add more seats.' });
     }
 
     // 5. Activate new device
     if (!watermark_text) {
-      console.log('Missing watermark text');
       return res.status(400).json({ valid: false, message: 'watermark_text required for new device activation' });
     }
 
-    console.log('Inserting new device');
-    const { data: insertedDevice, error: insertError } = await supabase
+    await supabase
       .from('screen_active_devices')
       .insert({
         license_key,
         device_id,
         watermark_text
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('Insert error:', insertError);
-      return res.status(500).json({ valid: false, message: 'Failed to activate device' });
-    }
-
-    console.log('Device activated successfully:', insertedDevice);
+      });
 
     return res.json({ 
       valid: true, 
